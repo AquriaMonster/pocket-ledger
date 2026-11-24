@@ -1,3 +1,7 @@
+# Revision 7.8 — budget refinement
+
+Run `py preview.py` and open http://127.0.0.1:8765/ after closing the previous preview server and tabs. Settings shows Obsidian · 7.8. Budget amount inputs group whole toman with commas while typing; stored values remain exact integers. Record payment creates an ordinary linked expense and automatically moves a fully paid plan to the collapsed Completed section for the relevant month. Monthly plans track individual months within the configured term. Edit provides optional reversible manual completion without creating an expense; schedule changes reset manual marks. Delete permanently removes the plan and its payment links but retains all actual transactions and their financial effects. Archive remains available. The original database identifier and backward-compatible optional plan fields are retained. Export a backup before testing with real data. No deployment changes.
+
 # Revision 7.7 — current preview
 
 The Settings shortcut fades and scales in/out over 220 ms, respecting the app motion preference. The header grid keeps the brand and privacy control stationary. The configured Blu savings destination is displayed last in the wallet, without changing ledger account order or financial calculations. The redundant Appearance picker is removed; the existing dark Obsidian theme remains, including when importing older backups. Settings displays version 7.7. No change to the database identifier, financial engine, or backup format.

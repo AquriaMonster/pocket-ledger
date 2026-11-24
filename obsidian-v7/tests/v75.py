@@ -38,7 +38,7 @@ with sync_playwright() as pw:
     assert p.evaluate(f"bankColor('{key}')")=='#33cc88'
     assert p.locator('#prefs [name=theme]').count()==0
     assert 'Appearance' not in p.locator('#prefs').inner_text()
-    assert p.locator('.build-version').inner_text()=='Obsidian · 7.7'
+    assert p.locator('.build-version').inner_text()=='Obsidian · 7.8'
     p.evaluate("state.theme='light';render()")
     assert p.locator('html').get_attribute('data-theme')=='dark'
     p.locator('#prefs button.primary').click()

@@ -1,4 +1,4 @@
-const cacheName='obsidian-review-v7.7:'+self.registration.scope;
+const cacheName='obsidian-review-v7.8:'+self.registration.scope;
 const files=['index.html','compat.js','obsidian.js','entry.js','motion-spring.js','obsidian.css','manifest.webmanifest','icon192.png','icon512.png','fonts/Manrope.ttf','fonts/Fraunces.ttf'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(cacheName).then(c=>c.addAll(files))));
 self.addEventListener('fetch',e=>{
@@ -7,4 +7,4 @@ self.addEventListener('fetch',e=>{
 });
 
 // Retire only the previous review cache for this registration scope.
-self.addEventListener('activate',e=>e.waitUntil(Promise.all(['obsidian-review-v6:','obsidian-review-v7:','obsidian-review-v7-motion1:','obsidian-review-v7-motion2:','obsidian-review-v7-motion3:','obsidian-review-v7-motion4:','obsidian-review-v7.5:','obsidian-review-v7.6:'].map(name=>caches.delete(name+self.registration.scope)))));
+self.addEventListener('activate',e=>e.waitUntil(Promise.all(['obsidian-review-v6:','obsidian-review-v7:','obsidian-review-v7-motion1:','obsidian-review-v7-motion2:','obsidian-review-v7-motion3:','obsidian-review-v7-motion4:','obsidian-review-v7.5:','obsidian-review-v7.6:','obsidian-review-v7.7:'].map(name=>caches.delete(name+self.registration.scope)))));

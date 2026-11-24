@@ -224,3 +224,8 @@ header{grid-template-columns:minmax(0,1fr) 44px 44px}
 
 /* Preserve the same appearance while the noninteractive shortcut fades out. */
 header .settings-shortcut:disabled{color:var(--ink);background:transparent;pointer-events:none}
+
+/* Budget completion and destructive controls. */
+.budget-item-head{gap:10px;align-items:center}.budget-actions{flex-wrap:wrap}.budget-actions .budget-delete{color:#E47781;border-color:#E4778160;background:#E4778110}.budget-done .budget-item-head b{color:var(--sub)}.budget-done .budget-progress i{background:#69CA9F}.budget-item-head strong{max-width:45%}.budget-actions button{white-space:nowrap}
+
+.budget-completed summary{font-size:14px;color:var(--sub)}.budget-manual small{font-size:12px;line-height:1.4;font-weight:400}.budget-manual{padding:10px 12px;border:1px solid var(--line);border-radius:10px}
