@@ -1,0 +1,1 @@
+{"name": "Pocket Ledger \u00b7 Obsidian Review", "short_name": "Ledger Review", "start_url": "./index.html", "scope": "./", "display": "standalone", "background_color": "#17121B", "theme_color": "#17121B", "icons": [{"src": "icon192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon512.png", "sizes": "512x512", "type": "image/png"}], "id": "./"}
