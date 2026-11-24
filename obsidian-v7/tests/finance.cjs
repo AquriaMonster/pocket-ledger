@@ -3,7 +3,9 @@ const read=p=>fs.readFileSync(path.join(__dirname,p),'utf8');
 const html=read('../app/index.html');
 const src=html.split('<script>')[1].split('</script>')[0];
 const ref=read('reference/engine.js');
-assert.equal(src,ref);
+// Only these four changes are permitted to the original financial engine: optional Shahr account, finite gap without it, preserved loan-history integrity, and removal of the Sx default while retaining all other IDs.
+const expected=ref.replace("cats:categories.map((name,i)=>({id:'c'+i,name,active:true}))", "cats:categories.map((name,i)=>({id:'c'+i,name,active:true})).filter(c=>c.id!=='c1')").replace('gap:Math.max(0,debt-balance.a0)','gap:Math.max(0,debt-(balance.a0??0))').replace("check(account('a0')&&s.accounts.every(a=>money(a.opening)),'Invalid opening balances.');","check(s.accounts.every(a=>money(a.opening))&&(account('a0')||s.openingDebt===0),'Invalid opening balances or missing loan account.');").replace("  if(r.type==='received')check(r.account==='a0','Shahrdari deposits go to the Shahr account.');","  if(r.type==='received')check(r.account==='a0','Shahrdari deposits go to the Shahr account.');\n  if(r.type==='returned')check(account('a0'),'Loan history requires the original loan account.');");
+assert.equal(src,expected);
 for(const [,block] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(block);
 for(const file of ['obsidian.js','sw.js'])new vm.Script(read('../app/'+file));
 function load(code){const c={module:{exports:{}}};vm.runInNewContext(code,c);return c.module.exports}
@@ -36,4 +38,6 @@ invalid(s=>s.rows[0].date='1403-07-31');invalid(s=>s.rows.push(s.rows[0]));inval
 invalid(s=>{s.openingDebt=0;s.rows.find(r=>r.type==='returned').date=m+'-10'});invalid(s=>s.version=2);
 sequence.cats.unshift({id:'newcat',name:'Example',active:true});sequence.accounts.push({id:'a3',name:'Example',active:true,opening:0});Object.assign(sequence.rows[0],{account:'a3',cat:'newcat'});assert.equal(compare(sequence).balance.a3,-90000);
 sequence.audit.push({at:'2025-01-01T00:00:00Z',action:'Edited transaction',before:{amount:1000},after:{amount:2000}});assert.equal(JSON.stringify(old.validate(JSON.parse(JSON.stringify(app.validate(sequence))))),JSON.stringify(sequence));
-console.log('PASS source equality, syntax, monthly snapshots, edit/delete math, custom accounts/categories, signed balances, JSON compatibility, audit, validation, amount and calendar boundaries');
+console.log('PASS controlled engine diff, syntax, monthly snapshots, edit/delete math, custom accounts/categories, signed balances, JSON compatibility, audit, validation, amount and calendar boundaries');
+
+const generic=app.fresh();generic.start=m+'-01';generic.accounts=generic.accounts.filter(a=>a.id!=='a0');assert.equal(app.summary(app.validate(generic),m).gap,0);assert.throws(()=>app.validate({...generic,openingDebt:1}));console.log('PASS optional Shahr account');

@@ -7,7 +7,7 @@ const db={transaction(_name,mode){
  const tx={objectStore(){return {get(){const req={};queueMicrotask(()=>{req.result=structuredClone(record);req.onsuccess();if(mode==='readwrite'&&!tx.aborted)tx.oncomplete()});return req},put(value){record=structuredClone(value)}}},abort(){tx.aborted=true;tx.onabort()}};return tx;
 }};
 function tab(){
- const ctx=vm.createContext({db,structuredClone,render(){},toast(){},module:{exports:{}}});
+ const ctx=vm.createContext({db,validateExtras(){},structuredClone,render(){},toast(){},module:{exports:{}}});
  vm.runInContext(engine.split('</script>')[0]+
  ';let state=fresh(),revision=0;'+section('function read()', 'function formData(')+
  'state.start="1403-07-01";',ctx);return code=>vm.runInContext(code,ctx)

@@ -102,7 +102,7 @@ with sync_playwright() as pw:
     assert any(x[1]<.75 and x[2] not in ('none','matrix(1, 0, 0, 1, 0, 0)') for x in samples),samples
     assert samples[-1][1]==1,samples
     assert p.evaluate("document.querySelector('#view').getAnimations().length") == 0
-    p.locator('[data-page=Settings]').click();p.locator('select[aria-label="Screen transitions"]').select_option('on')
+    p.locator('[data-page=Overview]').click();p.locator('[data-page=Settings]').click();p.locator('select[aria-label="Screen transitions"]').select_option('on')
     p.emulate_media(reduced_motion='reduce');p.evaluate("document.querySelector('[data-page=Overview]').click()")
     assert p.evaluate("document.querySelector('#view').getAnimations().length")>0
     # Force motion on while the OS requests reduced motion: sheet, picker feedback and exit.
@@ -126,7 +126,7 @@ with sync_playwright() as pw:
     p.evaluate("modal('Test modal','<p>Sample</p>',async()=>{})")
     assert p.locator('#dlg').evaluate('(e)=>e.getAnimations().length')>0
     p.locator('#close').click();p.wait_for_function('!document.querySelector("#dlg").open')
-    p.locator('[data-page=Settings]').click();p.wait_for_timeout(460)
+    p.locator('[data-page=Overview]').click();p.locator('[data-page=Settings]').click();p.wait_for_timeout(460)
     assert p.locator('.creation-credit').inner_text()=='Created by Aria and Buddy'
     assert p.locator('summary',has_text='Correction history').count()==0
     assert p.evaluate('Array.isArray(state.audit) && state.audit.length>0')

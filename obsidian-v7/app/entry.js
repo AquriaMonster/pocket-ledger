@@ -70,18 +70,22 @@ function candidateRow(draft,old){
  if(type==='transfer'||type==='fill')row.to=to;
  check(row.date<=today(),'Use today or an earlier date.');
  const next=clone(state);
+ if(type==='expense'&&draft.planId)row.planId=draft.planId;
  if(old)next.rows[next.rows.findIndex(r=>r.id===old.id)]=row;
  else next.rows.push(row);
+ applyRoundup(next,row,draft,old);
  next.recent={account,cat:row.cat||next.recent.cat};
  validate(next);
  return {row,next};
 }
-function entry(old){
+function entry(old,planned){
  if(masked){revealNotice();return}
  const dialog=$('composer'),trigger=document.activeElement;
  const draft=old?{...old,type:old.type==='fill'?'transfer':old.type,raw:String(old.amount/state.unit)}:{id:id(),raw:'',type:'expense',date:today(),note:'',account:state.recent.account,cat:state.recent.cat};
+ if(planned){draft.planId=planned.id;draft.raw=String(planned.remaining/state.unit);draft.note=planned.name;draft.cat=planned.cat||draft.cat}
+ draft.roundup=old?state.rows.some(r=>r.roundupParent===old.id):undefined;
  const accounts=state.accounts.filter(a=>a.active||[old?.account,old?.to].includes(a.id));
- const cats=state.cats.filter(c=>c.active||c.id===old?.cat);
+ const cats=state.cats.filter(c=>c.active||c.id===old?.cat||c.id===planned?.cat);
  let busy=false;
  const close=()=>!busy?closeSurface(dialog):Promise.resolve();
  dialog.onclose=()=>{if(dialog.open)return;dialog.textContent='';(trigger?.isConnected?trigger:$('add'))?.focus()};
@@ -101,9 +105,9 @@ function entry(old){
    if(e.type==='pointerup'&&distance>100){close();return}
    if(distance>0)animateIn(dialog,distance);
  };
- const labels={expense:'Expense',income:'Income',transfer:'Transfer',received:'Shahrdari Received',returned:'Shahrdari Return'};
+ const labels={expense:'Expense',income:'Income'};if(accounts.length>=2)labels.transfer='Transfer';if(state.accounts.some(a=>a.id==='a0'&&a.active)||old?.type==='received')labels.received='Shahrdari Received';if(loanEnabled()||old?.type==='returned')labels.returned='Shahrdari Return';
  const paired=()=>draft.type==='transfer'||draft.type==='fill';
- function sources(){if(draft.type==='received')return state.accounts.filter(a=>a.id==='a0');return accounts.filter(a=>draft.type!=='fill'||a.id!=='a0')}
+ function sources(){if(draft.type==='received')return accounts.filter(a=>a.id==='a0');return accounts.filter(a=>draft.type!=='fill'||a.id!=='a0')}
  function destinations(){return draft.type==='fill'?state.accounts.filter(a=>a.id==='a0'):accounts.filter(a=>a.id!==draft.account)}
  function selectValid(key,list){if(!list.some(o=>o.id===draft[key]))draft[key]=list[0]?.id||''}
  function header(title){return '<div class="grab" aria-hidden="true"></div><div class="composer-head"><h2 id="entry-title" tabindex="-1">'+title+'</h2><button type="button" data-action="close">Close</button></div>'}
@@ -121,6 +125,8 @@ function entry(old){
      '<label class="amount-display"><span class="amount-label">Amount · '+(state.unit===1000?'thousand toman':'toman')+'</span><input aria-label="Amount" inputmode="'+(state.unit===1000?'decimal':'numeric')+'" autocomplete="off" enterkeyhint="done" placeholder="0" value="'+esc(draft.raw)+'"><small id="entry-unit" aria-live="polite"></small></label>'+
      (draft.type==='expense'?('<label class="entry-type category-select"><span>Category</span><select name="cat" aria-label="Category">'+options(cats,draft.cat)+'</select></label>'):'')+
      chips('account',sources(),paired()?'From':'Account',balances)+(paired()?chips('to',destinations(),'To',balances):'')+
+     roundupEditor(draft,old)+
+     (draft.type==='expense'&&draft.planId?'<p class="budget-link">Budget item · '+esc(state.plans?.find(p=>p.id===draft.planId)?.name||'')+'</p>':'')+
      (draft.type==='returned'?'<p class="repay">Repayment to '+esc(state.recipient)+'</p>':'')+
      '<div class="entry-meta">'+field('Note · optional','note',draft.note,'maxlength="180" placeholder="Add a note"')+field('Jalali date','date',draft.date)+'</div>'+
      (old?'<button class="delete-entry" data-action="delete">Delete entry</button>':'')+
@@ -134,8 +140,10 @@ function entry(old){
      const unit=state.unit===1000?'thousand toman':'toman';let full='';
      try{if(draft.raw&&state.unit===1000)full=' · '+money(amount(draft.raw,state.unit))}catch{}
      dialog.querySelector('#entry-unit').textContent=state.unit===1000?(full?full.slice(3):'100 = 100,000 toman'):'Full toman';
+     const roundPreview=dialog.querySelector('#round-preview');if(roundPreview)roundPreview.textContent=roundupPreview(draft,old);
      dialog.querySelector('[data-action=save]').disabled=!draft.raw;
    }
+   const roundCheck=dialog.querySelector('[name=roundup]');if(roundCheck)roundCheck.onchange=()=>{draft.roundup=roundCheck.checked;refresh()};
    const input=dialog.querySelector('[aria-label=Amount]');
    input.setSelectionRange(input.value.length,input.value.length);
    input.oninput=()=>{draft.raw=input.value;refresh()};
@@ -152,7 +160,7 @@ function entry(old){
        finally{busy=false}
      }
      if(b.dataset.action==='delete'){
-       await close();modal('Delete this transaction?', '<p>'+esc(displayType(old.type))+' · '+money(old.amount)+' · '+esc(old.date)+'</p>',async()=>{const next=clone(state);next.rows=next.rows.filter(r=>r.id!==old.id);await save(next,'Deleted transaction',old,null)},'Delete');
+       await close();modal('Delete this transaction?', '<p>'+esc(displayType(old.type))+' · '+money(old.amount)+' · '+esc(old.date)+'</p>',async()=>{const next=clone(state);next.rows=next.rows.filter(r=>r.id!==old.id&&r.roundupParent!==old.id);await save(next,'Deleted transaction',old,null)},'Delete');
      }
    };
    enhancePickers(dialog);refresh();

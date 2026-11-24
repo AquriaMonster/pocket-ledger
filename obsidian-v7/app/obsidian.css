@@ -198,3 +198,29 @@ body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/20
 .picker-field{display:grid;gap:5px;min-width:0;margin:0 0 9px;color:var(--sub);font:600 12px Manrope,system-ui}.picker-field.entry-type{margin:3px 0 12px}
 
 .creation-credit{margin:24px 0 12px;text-align:center;font-size:12px;letter-spacing:.055em;color:var(--sub,#B9A7B9);line-height:1.6}
+/* 7.5: planning and account personalization */
+header{gap:5px;flex-wrap:nowrap}.settings-shortcut.selected{border-color:var(--cta);background:var(--soft)}.settings-shortcut[hidden]{display:none}.brand{min-width:0}.settings-shortcut,.privacy{flex-shrink:0}@media(max-width:355px){header .brand{font-size:17px}header .brand em{font-size:8px;letter-spacing:.1em}header .privacy{width:40px;min-width:40px;padding:8px}}
+.account-color-field input[type=color]{min-height:46px;padding:5px 8px;cursor:pointer}.roundup-row{padding:10px 12px;margin:8px 0 12px;border:1px solid var(--line);border-radius:13px;background:var(--base)}.roundup-row label{margin:0}.roundup-row small{display:block;margin:4px 0 0;color:var(--sub)}.budget-link{color:var(--sub);font-size:12px;margin:8px 0}.budget-hero{background:var(--glow),var(--surface);padding:18px}.budget-hero h2,.budget-list h2{margin:0 0 8px}.budget-hero strong{font:400 clamp(25px,8vw,37px) Fraunces,Georgia;display:block;overflow-wrap:anywhere;margin:12px 0 0}.budget-hero>small{display:block}.budget-add{font-size:12px;min-height:38px;padding:6px 10px}.budget-progress{height:5px;background:var(--soft);border-radius:8px;overflow:hidden;margin:12px 0 8px}.budget-progress i{height:100%;display:block;background:var(--cta);border-radius:8px}.budget-status{font-size:11px;color:var(--sub);gap:5px}.budget-list{padding:16px}.budget-item{padding:14px 0;border-top:1px solid var(--line)}.budget-item:first-of-type{border-top:0}.budget-item .line>div{min-width:0;flex:1}.budget-item b{display:block;overflow-wrap:anywhere}.budget-item small{display:block;font-size:11px;color:var(--sub);overflow-wrap:anywhere}.budget-item strong{font-size:14px;font-weight:600;text-align:right;overflow-wrap:anywhere}.budget-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}.budget-actions button{font-size:12px;min-height:40px;padding:6px 10px}.budget-foot{font-size:11px;line-height:1.6;margin:12px 5px}
+
+.settings-shortcut{min-width:44px;border-radius:50%;background:transparent;display:grid;place-items:center;width:44px;height:44px;padding:10px}.settings-shortcut svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}@media(max-width:355px){header .settings-shortcut{width:40px;min-width:40px;padding:8px}}
+
+.account-remove{color:var(--muted);font-size:12px}.account-remove:hover,.account-remove:focus-visible{color:#E47781;border-color:#E47781}.settings-detail-body .entry button{min-height:40px;padding:6px 10px}.settings-detail-body .entry>div:last-child{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px}.hero .snapshot:has(>span:only-child){grid-template-columns:1fr}
+
+.build-version{text-align:center;color:var(--muted);font-size:10px;letter-spacing:.08em;margin:-12px 0 18px}
+
+/* Stable app header across pages, including pages with different scroll heights. */
+html{scrollbar-gutter:stable}
+header{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:5px;align-items:center}
+header .brand{grid-column:1;margin:0;white-space:nowrap}
+header .settings-shortcut{grid-column:2;grid-row:1}
+header .privacy{grid-column:3;grid-row:1}
+header .settings-shortcut[hidden]{display:none!important}
+.account-remove{color:#F1A2AA!important;background:#35252F!important;border-color:#87535F!important;font-weight:600;opacity:1!important}
+.account-remove:hover,.account-remove:focus-visible{color:#FFE8EA!important;background:#573440!important;border-color:#E47781!important}
+#dlg .danger-confirm{color:#241827;background:#E8A2AA;border-color:#E8A2AA}
+#dlg .removal-impact{margin:8px 0 16px;padding-left:20px;font-size:13px;overflow-wrap:anywhere}
+header{grid-template-columns:minmax(0,1fr) 44px 44px}
+@media(max-width:355px){header{grid-template-columns:minmax(0,1fr) 40px 40px}}
+
+/* Preserve the same appearance while the noninteractive shortcut fades out. */
+header .settings-shortcut:disabled{color:var(--ink);background:transparent;pointer-events:none}

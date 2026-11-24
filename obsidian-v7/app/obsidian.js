@@ -1,7 +1,7 @@
 const navPaths=['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3v9l6 4', 'M4 6h16M4 12h10M4 18h13', 'M5 19V11M12 19V5M19 19v-6', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2'];
 function navGlyph(i){return svg("0 0 24 24",'<path d="'+navPaths[i]+'"/>')}
 const colors=['#E47781','#79AEF0','#69CA9F'];
-const bankColor=id=>colors[['a0','a1','a2'].indexOf(id)]||'#D0B1CA';
+const bankColor=id=>{const custom=state.accounts.find(a=>a.id===id)?.color;return /^#[0-9a-f]{6}$/i.test(custom||'')?custom:colors[['a0','a1','a2'].indexOf(id)]||'#D0B1CA'};
 const svg=(view,body)=>'<svg aria-hidden="true" viewBox="'+view+'">'+body+'</svg>';
 const repeat=(n,fn)=>Array.from({length:n},(_,i)=>fn(i)).join('');
 function engraving(id) {
@@ -45,7 +45,10 @@ function decorateOverview(){
  let offset=0;
  const slices=masked||Object.entries(v.balance).some(([,n])=>n<0)||v.total<=0?'':Object.entries(v.balance).map(([id,n])=>{const start=offset;offset+=100*n/v.total;return n?`<circle cx="50" cy="50" r="39" pathLength="100" stroke="${bankColor(id)}" stroke-width="2" stroke-dasharray="${Math.max(0,offset-start-1)} 100" stroke-dashoffset="${-start}" transform="rotate(-90 50 50)"/>`:''}).join('');
  ring.innerHTML=svg('0 0 100 100','<circle cx="50" cy="50" r="47" class="ring-track"/><circle cx="50" cy="50" r="37" class="ring-dotted"/>'+slices.replaceAll('r="39"','r="43"')+'<text class="date-day" x="50" y="54" text-anchor="middle"></text><text class="date-month" x="50" y="68" text-anchor="middle"></text>');hero.prepend(ring);updateDateDial();
- const cards=el.querySelector('.cards');cards.insertAdjacentHTML('beforebegin','<h2 class="eyebrow">Wallet</h2>');
+ const cards=el.querySelector('.cards');
+ // Keep the configured savings destination last without changing the stored account order.
+ for(const card of [...cards.children]){const a=state.accounts.find(a=>a.id===card.dataset.bank);if(a&&(a.id===state.roundup?.to||a.name.trim().toLowerCase()==='blu savings'))cards.append(card)}
+ cards.insertAdjacentHTML('beforebegin','<h2 class="eyebrow">Wallet</h2>');
  for(const card of cards.children){card.style.setProperty('--tint',bankColor(card.dataset.bank));card.insertAdjacentHTML('afterbegin',svg('0 0 340 210',engraving(card.dataset.bank)))}
  const chart=cards.nextElementSibling;
  cards.tabIndex=0;cards.setAttribute('role','region');cards.setAttribute('aria-label','Wallet accounts');
@@ -108,11 +111,11 @@ function renderInsights(){
  const categories=rankedCategories.map(([key,n])=>'<div class="line insight-label"><span>'+esc(categoryName(key))+'</span>'+amountText(n)+'</div><div class="insight-bar"><i style="width:'+n/v.expense*100+'%"></i></div>').join('')||'<p class="insight-caption">No expenses recorded this month.</p>';
  const top=rankedCategories[0],share=top&&v.expense?top[1]/v.expense*100:0;
  const categoryIntro=top?'<div class="category-intro"><div><small class="eyebrow">Top category</small><p><b>'+esc(categoryName(top[0]))+'</b> took '+Math.round(share)+'% of spending in '+short(month)+'.</p></div><div class="insight-ring" role="img" aria-label="'+Math.round(share)+' percent of spending">'+svg('0 0 100 100','<circle cx="50" cy="50" r="43" class="ring-track"/><circle cx="50" cy="50" r="36" class="ring-dotted"/><circle cx="50" cy="50" r="43" pathLength="100" stroke-dasharray="'+share+' 100" transform="rotate(-90 50 50)" class="insight-ring-arc"/><text x="50" y="58" text-anchor="middle" class="insight-ring-number">'+Math.round(share)+'%</text>')+'</div></div>':'';
- const allocation=Object.entries(v.balance),validAllocation=v.total>0&&allocation.every(([,n])=>n>=0);
+ const allocation=Object.entries(v.balance).filter(([key,n])=>n!==0||state.accounts.some(a=>a.id===key&&a.active)),validAllocation=v.total>0&&allocation.every(([,n])=>n>=0);
  const allocationBar=validAllocation?'<div class="allocation-bar" aria-hidden="true">'+allocation.filter(([,n])=>n>0).map(([key,n])=>'<i style="flex:'+n+';background:'+bankColor(key)+'"></i>').join('')+'</div>':'';
  const allocationRows=allocation.map(([key,n])=>'<div class="line allocation-row"><span><i style="background:'+bankColor(key)+'"></i>'+esc(accountName(key))+'</span><b>'+ (validAllocation?Math.round(n/v.total*100)+'%':money(n))+'</b></div>').join('');
  const peaks=d.ranked.slice(0,3).map(item=>'<div class="entry"><span>'+item.day+' '+short(month)+'</span>'+amountText(item.amount)+'</div>').join('')||'<p class="insight-caption">No spending days yet.</p>';
- el.innerHTML='<div class="insights-page">'+section('By category',categoryIntro+categories)+section('Daily average','<strong class="insight-hero">'+figure(d.average)+'</strong> <small>toman / day</small><p class="insight-caption">'+d.covered+' recorded calendar days, including days without spending</p>'+metric('Personal income',v.income))+section('Month comparison',comparison)+section('Account allocation',allocationBar+allocationRows)+section('Highest spending days',peaks)+section('Shahrdari',metric('Still to return',v.debt)+metric('Amount to replenish '+esc(accountName('a0')),v.gap)+metric('Received this month',v.received)+metric('Returned this month',v.returned))+'</div>';
+ el.innerHTML='<div class="insights-page">'+section('By category',categoryIntro+categories)+section('Daily average','<strong class="insight-hero">'+figure(d.average)+'</strong> <small>toman / day</small><p class="insight-caption">'+d.covered+' recorded calendar days, including days without spending</p>'+metric('Personal income',v.income))+section('Month comparison',comparison)+section('Account allocation',allocationBar+allocationRows)+section('Highest spending days',peaks)+(loanVisible(v)?section('Shahrdari',metric('Still to return',v.debt)+metric('Amount to replenish '+accountName('a0'),v.gap)+metric('Received this month',v.received)+metric('Returned this month',v.returned)):'')+'</div>';
 }
 // Derive elapsed-day cumulative spending from ledger rows, never project future spending.
 function chartSeries(key,rows,now=today()){
@@ -130,7 +133,7 @@ function drawChart(el){
  const isDaily=chartMode==='daily',values=isDaily?daily:running;
  const title=isDaily?'Daily spending':'Cumulative spending';
  const modes='<div class="chart-heading"><h2 class="eyebrow">Spending</h2><div class="chart-modes" role="group" aria-label="Spending chart mode">'+['daily','cumulative'].map(mode=>'<button type="button" data-chart-mode="'+mode+'" aria-pressed="'+(chartMode===mode)+'">'+(mode==='daily'?'Daily':'Cumulative')+'</button>').join('')+'</div></div>';
- function wireModes(){el.querySelectorAll('[data-chart-mode]').forEach(b=>b.onclick=()=>{chartMode=b.dataset.chartMode;try{localStorage.setItem('obsidian-review-chart-mode',chartMode)}catch{}drawChart(el);el.querySelector('[data-chart-mode='+chartMode+']')?.focus({preventScroll:true})})}
+ function wireModes(){el.querySelectorAll('[data-chart-mode]').forEach(b=>b.onclick=()=>{if(chartMode===b.dataset.chartMode)return;chartMode=b.dataset.chartMode;try{localStorage.setItem('obsidian-review-chart-mode',chartMode)}catch{}drawChart(el);animateChartMode(el);el.querySelector('[data-chart-mode='+chartMode+']')?.focus({preventScroll:true})})}
  el.className='box spending';
  if(!limit){el.innerHTML=modes+'<p class="chart-hint">No elapsed days in this month.</p>';wireModes();return}
  const left=12,right=328,top=24,bottom=130;
@@ -193,8 +196,8 @@ function installMotionPreference(){
 function renderNavigation(){
  const nav=$('nav');
  if(!nav.querySelector('#add')){
-   const pages=['Overview','Transactions','Insights','Settings'];
-   const tabs=pages.map((name,i)=>'<button type="button" data-page="'+name+'">'+navGlyph(i)+(i===1?'Activity':name)+'</button>');
+   const pages=['Overview','Transactions','Insights','Budget'];
+   const tabs=pages.map((name,i)=>'<button type="button" data-page="'+name+'">'+(name==='Budget'?svg('0 0 24 24','<path d="M5 7h14v14H5zM8 3v7M16 3v7M5 12h14M9 16h6"/>'):navGlyph(i))+(i===1?'Activity':name)+'</button>');
    tabs.splice(2,0,'<button type="button" id="add" aria-label="Add transaction">'+svg('0 0 24 24','<path d="M12 5v14M5 12h14"/>')+'</button>');
    nav.innerHTML=tabs.join('');
    nav.onclick=e=>{
@@ -202,9 +205,7 @@ function renderNavigation(){
      if(!button||!nav.contains(button))return;
      if(button.id==='add'){entry();return}
      if(page===button.dataset.page)return;
-     const direction=pages.indexOf(button.dataset.page)>pages.indexOf(page)?1:-1;
-     page=button.dataset.page;render();window.scrollTo(0,0);
-     animateScreen(direction);
+     goToPage(button.dataset.page);
    };
  }
  for(const tab of nav.querySelectorAll('[data-page]')){
@@ -230,4 +231,119 @@ function installDepth(hero){
  hero.onpointerdown=e=>{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){held=true;hero.setPointerCapture(e.pointerId)}};
  hero.onpointermove=e=>{if(held){const r=hero.getBoundingClientRect();aim(((e.clientX-r.left)/r.width-.5)*22,((e.clientY-r.top)/r.height-.5)*18)}};
  hero.onpointerup=hero.onpointercancel=()=>{if(held){held=false;aim(0,0)}};
+}
+
+// 7.5: optional extensions. Same v1 storage key; the engine permits a missing Shahr account.
+function updateAccountColors(){
+ let style=$('account-colors');if(!style){style=document.createElement('style');style.id='account-colors';document.head.append(style)}
+ style.textContent=state.accounts.filter(a=>/^[a-z0-9-]+$/i.test(a.id)).map(a=>`[data-bank="${a.id}"]{--accent:${bankColor(a.id)}}.cards .card[data-bank="${a.id}"]{background-image:radial-gradient(ellipse at 100% 0%,${bankColor(a.id)}4b,transparent 60%),var(--sheen)}`).join('\n');
+}
+function colorField(a){return '<label class="account-color-field">Account color<input type="color" name="color" value="'+bankColor(a?.id)+'"></label>'}
+function goToPage(name){if(page===name)return;const pages=['Overview','Transactions','Insights','Budget','Settings'];const direction=pages.indexOf(name)>pages.indexOf(page)?1:-1;page=name;render();window.scrollTo(0,0);animateScreen(direction)}
+const settingsShortcut=document.createElement('button');settingsShortcut.type='button';settingsShortcut.className='settings-shortcut';settingsShortcut.dataset.page='Settings';settingsShortcut.setAttribute('aria-label','Settings');settingsShortcut.innerHTML=svg('0 0 24 24','<path d="M10 2h4l.6 3.1 2.1 1.2 3-1 2 3.5-2.4 2.1v2.2l2.4 2.1-2 3.5-3-1-2.1 1.2-.6 3.1h-4l-.6-3.1-2.1-1.2-3 1-2-3.5 2.4-2.1v-2.2L2.3 8.8l2-3.5 3 1 2.1-1.2L10 2z"/><circle cx="12" cy="12" r="3"/>');settingsShortcut.onclick=()=>goToPage('Settings');document.querySelector('header').append(settingsShortcut);
+// Reserve the header grid slot throughout the exit; make the departing button inert.
+let shortcutTarget=null,shortcutMotion=null;
+function updateSettingsShortcut(show){
+ const b=settingsShortcut, enabled=motionEnabled()&&typeof b.animate==='function';
+ if(shortcutTarget===show&&(!shortcutMotion||enabled))return;
+ const first=shortcutTarget===null;
+ const previous=b.hidden?{opacity:0,transform:'scale(.86)'}:{opacity:getComputedStyle(b).opacity,transform:getComputedStyle(b).transform};
+ shortcutTarget=show;
+ if(shortcutMotion){shortcutMotion.cancel();shortcutMotion=null}
+ if(!show&&document.activeElement===b)b.blur();
+ b.disabled=!show;b.setAttribute('aria-hidden',String(!show));
+ if(first||!enabled){b.hidden=!show;return}
+ b.hidden=false;
+ const animation=b.animate([previous,{opacity:show?1:0,transform:show?'scale(1)':'scale(.86)'}],{duration:220,easing:'cubic-bezier(.2,.65,.3,1)',fill:'both'});
+ shortcutMotion=animation;
+ animation.onfinish=()=>{if(shortcutMotion!==animation)return;b.hidden=!shortcutTarget;shortcutMotion=null;animation.cancel()};
+}
+function launchAnimation(){if(!motionEnabled())return;const view=$('view');animateIn(view,20);animateIn(document.querySelector('header'),-12);if($('nav').children.length)$('nav').animate([{opacity:.25,transform:'translate(-50%,20px)'},{opacity:1,transform:'translate(-50%,0)'}],{duration:420,easing:'cubic-bezier(.19,1,.28,1)'})}
+function animateChartMode(el){if(!motionEnabled())return;const plot=el.querySelector('.chart-plot'),read=el.querySelector('.chart-reading');if(plot)plot.animate([{opacity:.25,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:360,easing:'cubic-bezier(.19,1,.28,1)'});if(read)selectionFeedback(read);selectionFeedback(el.querySelector('[aria-pressed=true]'))}
+function validMoney(n){return Number.isSafeInteger(n)&&n>0&&n<=99999999999999}
+function validateExtras(s){
+ for(const a of s.accounts)check(a.color===undefined||/^#[0-9a-f]{6}$/i.test(a.color),'Invalid account color.');
+ const account=i=>s.accounts.some(a=>a.id===i);
+ if(s.roundup!==undefined){const r=s.roundup;check(r&&typeof r.enabled==='boolean'&&account(r.source)&&account(r.to)&&r.source!==r.to&&validMoney(r.step),'Invalid savings settings.');if(r.enabled)check(s.accounts.some(a=>a.id===r.source&&a.active)&&s.accounts.some(a=>a.id===r.to&&a.active),'Disable round-ups before deactivating either account.');}
+ const plans=s.plans??[];check(Array.isArray(plans),'Invalid budget plans.');const ids=new Set();for(const p of plans){check(p&&typeof p.id==='string'&&/^[a-z0-9-]+$/i.test(p.id)&&!ids.has(p.id)&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&validMoney(p.amount)&&validDate(p.due)&&['once','monthly'].includes(p.repeat)&&Number.isInteger(p.months)&&p.months>=0&&p.months<=600&&typeof p.archived==='boolean'&&s.cats.some(c=>c.id===p.cat),'Invalid budget item.');ids.add(p.id)}
+ const parents=new Set();for(const r of s.rows){if(r.planId!==undefined)check(r.type==='expense'&&ids.has(r.planId),'Invalid budget payment link.');if(r.roundupParent!==undefined){const parent=s.rows.find(x=>x.id===r.roundupParent);check(parent&&parent.type==='expense'&&r.type==='transfer'&&r.account===parent.account&&r.date===parent.date&&validMoney(r.roundupStep)&&r.amount===roundupAmount(parent.amount,r.roundupStep)&&!parents.has(parent.id),'Invalid linked savings transfer.');parents.add(parent.id)}}
+ return s;
+}
+function roundupAmount(n,step){return (step-n%step)%step}
+function roundupRule(draft,old){
+ if(draft.type!=='expense')return null;
+ const existing=old&&state.rows.find(r=>r.roundupParent===old.id);
+ if(existing&&draft.account===existing.account)return {source:existing.account,to:existing.to,step:existing.roundupStep};
+ const cfg=state.roundup;if(cfg?.enabled&&draft.account===cfg.source)return cfg;return null;
+}
+function roundupSelected(draft,old){return draft.roundup??!old}
+function roundupPreview(draft,old){const rule=roundupRule(draft,old);if(!rule||!roundupSelected(draft,old))return 'No automatic transfer';try{const n=roundupAmount(amount(draft.raw,state.unit),rule.step);return n?money(n)+' to '+accountName(rule.to):'No extra transfer needed'}catch{return 'Rounds up to the next '+money(rule.step)}}
+function roundupEditor(draft,old){const rule=roundupRule(draft,old);if(!rule)return '';return '<div class="roundup-row"><label><span><input type="checkbox" name="roundup" '+(roundupSelected(draft,old)?'checked':'')+'> Blu savings round-up</span></label><small id="round-preview">'+esc(roundupPreview(draft,old))+'</small></div>'}
+function applyRoundup(next,row,draft,old){
+ const existing=old&&state.rows.find(r=>r.roundupParent===old.id);next.rows=next.rows.filter(r=>r.roundupParent!==row.id);
+ const rule=roundupRule(draft,old);if(!rule||!roundupSelected(draft,old))return;
+ const n=roundupAmount(row.amount,rule.step);if(!n)return;
+ next.rows.push({id:existing?.id||id(),type:'transfer',account:row.account,to:rule.to,amount:n,date:row.date,note:'Automatic Blu savings',roundupParent:row.id,roundupStep:rule.step});
+}
+function editLedgerRow(idValue){const row=state.rows.find(r=>r.id===idValue);if(!row)return;entry(row.roundupParent?state.rows.find(r=>r.id===row.roundupParent):row)}
+function roundupSettingsHtml(){if(!state.accounts.some(a=>a.id==='a1'&&a.active))return '';const r=state.roundup;return '<details><summary>Blu automatic savings</summary><p class="muted">Track the bank’s round-up transfers separately from spending. Only applies to new expenses, never to your past entries.</p><p>'+ (r?.enabled?'Enabled · '+esc(accountName(r.to))+' · '+money(r.step)+' increment':'Not enabled')+'</p><button id="roundup-settings">Configure savings</button></details>'}
+function wireRoundupSettings(){const b=$('roundup-settings');if(!b)return;b.onclick=()=>{const r=state.roundup,choices=[{id:'new',name:'Create Blu Savings'},...state.accounts.filter(a=>a.id!=='a1'&&(a.active||a.id===r?.to))];modal('Blu automatic savings','<p class="muted">For example, spending 55,000 toman moves 5,000 toman to savings with a 10,000 toman increment. Match the increment to your bank. You can turn this off for individual expenses.</p><label><span><input type="checkbox" name="enabled" '+(!r||r.enabled?'checked':'')+'> Enable Blu round-ups</span></label>'+select('Savings account','to',choices,r?.to||'new')+field('Round-up increment · full toman','step',r?.step||10000,'required inputmode="numeric"')+'<p class="muted">A new savings account starts at zero. Reconcile existing savings separately: if already included in Blu’s balance, record a transfer to savings; otherwise correct opening balances or record a documented adjustment. Do not count the same money twice.</p>',async f=>{const s=clone(state);let to=f.to;if(to==='new'){if(!f.enabled&&!r)return;const existing=s.accounts.find(a=>a.name.toLowerCase()==='blu savings');if(existing){to=existing.id;existing.active=true}else{to=id();s.accounts.push({id:to,name:'Blu Savings',opening:0,active:true,color:'#8AAEC7'})}}s.roundup={enabled:!!f.enabled,source:'a1',to,step:amount(f.step,1)};await save(s,'Updated savings settings',r||null,s.roundup)})}}
+// Plans are commitments only. Actual expenses are entered in the regular ledger.
+function monthDistance(a,b){const [y,m]=a.split('-').map(Number),[yy,mm]=b.split('-').map(Number);return (yy-y)*12+mm-m}
+function planStatus(p,key,rows){const dueMonth=p.due.slice(0,7),delta=monthDistance(dueMonth,key);const monthly=p.repeat==='monthly';const due=monthly?delta>=0&&(!p.months||delta<p.months):delta>=0;const dueDate=monthly&&due?key+'-'+String(Math.min(+p.due.slice(-2),days(key))).padStart(2,'0'):p.due;const paid=rows.filter(r=>r.type==='expense'&&r.planId===p.id&&(monthly?r.date.slice(0,7)===key:r.date.slice(0,7)<=key)).reduce((n,r)=>n+r.amount,0);return {isDue:due,dueDate,paid,remaining:Math.max(0,p.amount-paid),future:delta<0};}
+function planEditor(old){const cats=state.cats.filter(c=>c.active||c.id===old?.cat);modal(old?'Edit budget item':'New budget item',field('What are you planning?','name',old?.name,'required maxlength="100" placeholder="Class, purchase, installment…"')+field('Planned amount · full toman','amount',old?.amount,'required inputmode="numeric"')+select('Category','cat',cats,old?.cat||state.recent.cat)+select('Frequency','repeat',[{id:'once',name:'One time'},{id:'monthly',name:'Every Shamsi month'}],old?.repeat||'once')+field('First due date · Jalali YYYY-MM-DD','due',old?.due||today(),'required')+field('Number of monthly payments · 0 = ongoing','months',old?.months||0,'required inputmode="numeric"')+(old?'<label><span><input type="checkbox" name="archived" '+(old.archived?'checked':'')+'> Archive this plan</span></label>':'')+'<p class="muted">Plans do not change your bank balances. Record actual payments from Budget when you spend.</p>',async f=>{const s=clone(state);s.plans??=[];const plan={id:old?.id||id(),name:f.name.trim(),amount:amount(f.amount,1),cat:f.cat,repeat:f.repeat,due:digits(f.due),months:f.repeat==='monthly'?Number(digits(f.months)):0,archived:!!f.archived};if(old)s.plans[s.plans.findIndex(p=>p.id===old.id)]=plan;else s.plans.push(plan);await save(s,'Updated budget item',old||null,plan)})}
+function renderBudget(){const plans=(state.plans||[]).filter(p=>!p.archived),all=plans.map(p=>({...p,...planStatus(p,month,state.rows)}));const active=all.filter(p=>p.isDue&&(p.repeat==='monthly'||p.due.startsWith(month)||p.remaining>0||state.rows.some(r=>r.planId===p.id&&r.date.startsWith(month)))).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));const future=all.filter(p=>p.future).sort((a,b)=>a.due.localeCompare(b.due));const remaining=active.reduce((n,p)=>n+p.remaining,0),paid=active.reduce((n,p)=>n+Math.min(p.amount,p.paid),0),planned=active.reduce((n,p)=>n+p.amount,0);const current=month===today().slice(0,7);
+ const card=p=>'<article class="budget-item"><div class="line"><div><b>'+esc(p.name)+'</b><small>'+esc(categoryName(p.cat))+' · '+(p.repeat==='monthly'?'Monthly'+(p.months?' · '+p.months+' payments':''):'One time')+'</small></div><strong>'+money(p.amount)+'</strong></div><small>Due '+esc(p.dueDate)+'</small>'+(p.future?'':'<div class="budget-progress"><i style="width:'+Math.min(100,p.paid/p.amount*100)+'%"></i></div><div class="line budget-status"><span>'+ (p.remaining?money(p.remaining)+' remaining':'Paid')+'</span><span>'+money(p.paid)+' paid</span></div>')+'<div class="budget-actions"><button data-plan-edit="'+esc(p.id)+'">Edit</button>'+(current&&p.isDue&&p.remaining?'<button class="primary" data-plan-pay="'+esc(p.id)+'">Record payment</button>':'')+'</div></article>';
+ $('content').innerHTML='<section class="box budget-hero"><div class="line"><h2 class="eyebrow">Planned spending</h2><button class="budget-add" id="budget-add">＋ Add plan</button></div><strong>'+money(remaining)+'</strong><small>Still to pay · selected month</small><div class="budget-progress"><i style="width:'+(planned?paid/planned*100:0)+'%"></i></div><div class="line budget-status"><span>'+money(planned)+' planned</span><span>'+money(paid)+' covered</span></div></section><section class="box budget-list"><h2 class="eyebrow">This month &amp; overdue one-time items</h2>'+(active.map(card).join('')||'<p class="muted">No planned payments for this month. Add a class, purchase or recurring bill.</p>')+'</section>'+(future.length?'<section class="box budget-list"><h2 class="eyebrow">Upcoming</h2>'+future.map(card).join('')+'</section>':'')+((state.plans||[]).some(p=>p.archived)?'<details><summary>Archived plans</summary>'+state.plans.filter(p=>p.archived).map(p=>'<div class="entry"><span>'+esc(p.name)+'</span><button data-plan-edit="'+esc(p.id)+'">Edit</button></div>').join('')+'</details>':'')+'<p class="muted budget-foot">Monthly plans track each month separately. Recording a payment creates a normal expense; plans themselves never change balances.</p>';
+ $('budget-add').onclick=()=>planEditor();$('content').querySelectorAll('[data-plan-edit]').forEach(b=>b.onclick=()=>planEditor(state.plans.find(p=>p.id===b.dataset.planEdit)));$('content').querySelectorAll('[data-plan-pay]').forEach(b=>b.onclick=()=>entry(null,active.find(p=>p.id===b.dataset.planPay)));enhanceSettings();
+}
+
+// Remove an account and its linked ledger records in one atomic, validated save.
+function loanEnabled(){return state.accounts.some(a=>a.id==='a0'&&a.active)||summary(state,'9999-12').debt>0}
+function loanVisible(v){return loanEnabled()||v.debt>0||v.received>0||v.returned>0||v.fill>0}
+function normalizeDefaultCategories(s){
+ const sx=s.cats.find(c=>c.id==='c1'&&c.name==='Sx');
+ if(!sx)return s;
+ // Do not break references in older backups or renumber other categories.
+ if(s.rows.some(r=>r.cat===sx.id)||(s.plans||[]).some(p=>p.cat===sx.id)||s.cats.length===1)sx.active=false;
+ else s.cats=s.cats.filter(c=>c.id!==sx.id);
+ if(s.recent.cat===sx.id)delete s.recent.cat;
+ return s;
+}
+function accountRemovalInfo(s,key){
+ const a=s.accounts.find(x=>x.id===key);check(a,'Account not found.');
+ const loan=key==='a0';
+ const removed=new Set(s.rows.filter(r=>r.account===key||r.to===key||(loan&&['received','returned','fill'].includes(r.type))).map(r=>r.id));
+ // A deleted parent expense cannot leave its generated transfer behind.
+ for(const r of s.rows)if(r.roundupParent&&removed.has(r.roundupParent))removed.add(r.id);
+ const reason=!s.accounts.some(x=>x.id!==key&&x.active)?'Keep at least one active account. Add or restore another account first.':'';
+ return {a,loan,removed,reason};
+}
+function removeAccount(s,key){
+ const {loan,removed,reason}=accountRemovalInfo(s,key);check(!reason,reason);
+ const disableSavings=s.roundup&&(s.roundup.source===key||s.roundup.to===key);
+ const linked=new Set([key,...removed]);
+ // Remove audit events that reference the deleted account/records, including loan-only records.
+ // Preserve unrelated events; never add the deleted account or its data back to the audit.
+ function refers(v){if(typeof v==='string')return linked.has(v);if(!v||typeof v!=='object')return false;if(loan&&['received','returned','fill'].includes(v.type))return true;return Object.entries(v).some(([k,x])=>linked.has(k)||refers(x))}
+ s.audit=s.audit.filter(e=>!refers(e.before)&&!refers(e.after)&&!(loan&&/Shahrdari/i.test(e.action)));
+ s.rows=s.rows.filter(r=>!removed.has(r.id));s.accounts=s.accounts.filter(a=>a.id!==key);
+ if(disableSavings)delete s.roundup;
+ if(s.recent.account===key)delete s.recent.account;
+ if(loan){s.openingDebt=0;s.recipient='Repayment recipient';s.card='';}
+ return s;
+}
+function wireAccountRemoval(){
+ const reopen=()=>{const details=[...$('content').querySelectorAll('details')].find(d=>d.firstElementChild?.textContent==='Accounts');if(details)details.open=true;};
+ $('content').querySelectorAll('[data-remove-account]').forEach(b=>b.onclick=()=>{
+  const key=b.dataset.removeAccount,{a,loan,removed,reason}=accountRemovalInfo(state,key);
+  if(reason){modal('Cannot remove '+a.name,'<p>'+esc(reason)+'</p>',async()=>{},'OK');return}
+  const next=removeAccount(clone(state),key);validate(next);validateExtras(next);
+  const before=summary(state,'9999-12'),after=summary(next,'9999-12');
+  const affected=next.accounts.filter(x=>before.balance[x.id]!==after.balance[x.id]);
+  const changes=affected.length?'<p>Other account balances will be recalculated:</p><ul class="removal-impact">'+affected.map(x=>'<li>'+esc(x.name)+': '+money(before.balance[x.id])+' → '+money(after.balance[x.id])+'</li>').join('')+'</ul>':'';
+  modal('Permanently remove '+a.name+'?', '<p>This deletes the account, its opening balance, and '+removed.size+' linked transaction'+(removed.size===1?'':'s')+' (including both sides of transfers). Related audit entries are removed too.</p>'+ (loan?'<p>All Shahrdari loan records, debt and repayment details will also be removed. This does not settle any real-world loan.</p>':'')+(state.roundup&&(state.roundup.source===key||state.roundup.to===key)?'<p>Automatic savings will also be turned off.</p>':'')+changes+'<p class="muted">Budget payments from this account will no longer count as paid. This cannot be undone without a backup.</p><button type="button" id="removal-backup">Download backup first</button>',async()=>{const current=removeAccount(clone(state),key);await save(current,'Permanently removed account',null,{removedTransactions:removed.size});reopen()},'Delete account');
+  $('removal-backup').onclick=backup;$('dlg').querySelector('button.primary').classList.add('danger-confirm');
+ });
+ $('content').querySelectorAll('[data-restore-account]').forEach(b=>b.onclick=async()=>{try{const next=clone(state);const a=next.accounts.find(x=>x.id===b.dataset.restoreAccount);a.active=true;await save(next,'Restored account',null,a);reopen()}catch(e){toast(e.message)}});
 }
